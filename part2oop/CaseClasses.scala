@@ -1,8 +1,6 @@
 package lectures.part2oop
 
-/**
-  * Created by Daniel.
-  */
+
 object CaseClasses extends App {
 
   /*
