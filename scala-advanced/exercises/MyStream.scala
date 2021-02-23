@@ -7,18 +7,24 @@ import scala.annotation.tailrec
 
 abstract class MyStream[+A] {
   def isEmpty: Boolean
+
   def head: A
+
   def tail: MyStream[A]
 
-  def #::[B >: A](element:B):MyStream[B] //prepend operator
-  def ++[B >: A](anotherStream: =>MyStream[B]):MyStream[B] // concatenate two streams
+  def #::[B >: A](element: B): MyStream[B] //prepend operator
+  def ++[B >: A](anotherStream: => MyStream[B]): MyStream[B] // concatenate two streams
 
-  def foreach(f: A => Unit):Unit
+  def foreach(f: A => Unit): Unit
+
   def map[B](f: A => B): MyStream[B]
+
   def flatMap[B](f: A => MyStream[B]): MyStream[B]
+
   def filter(predicate: A => Boolean): MyStream[A]
-  def take(n:Int):MyStream[A] // takes the first n elements out of this stream
-  def takeAsList(n:Int):List[A] = take(n).toList()
+
+  def take(n: Int): MyStream[A] // takes the first n elements out of this stream
+  def takeAsList(n: Int): List[A] = take(n).toList()
 
   /*
     [1,2,3].toList([]) =
@@ -29,7 +35,7 @@ abstract class MyStream[+A] {
    */
   @tailrec
   final def toList[B >: A](acc: List[B] = Nil): List[B] =
-    if(isEmpty) acc.reverse
+    if (isEmpty) acc.reverse
     else tail.toList(head :: acc)
 
 }
@@ -41,7 +47,7 @@ object EmptyStream extends MyStream[Nothing] {
 
   override def tail: MyStream[Nothing] = throw new NoSuchElementException
 
-  override def #::[B >: Nothing](element: B): MyStream[B] = new Cons(element,this)
+  override def #::[B >: Nothing](element: B): MyStream[B] = new Cons(element, this)
 
   override def ++[B >: Nothing](anotherStream: => MyStream[B]): MyStream[B] = anotherStream
 
@@ -57,12 +63,12 @@ object EmptyStream extends MyStream[Nothing] {
 
 }
 
-class Cons[+A](hd:A,tl: => MyStream[A]) extends MyStream[A]{
+class Cons[+A](hd: A, tl: => MyStream[A]) extends MyStream[A] {
   override def isEmpty: Boolean = false
 
   override val head: A = hd
 
-  override lazy val tail: MyStream[A] = tl  //call by need
+  override lazy val tail: MyStream[A] = tl //call by need
 
   override def #::[B >: A](element: B): MyStream[B] = new Cons(element, this)
 
@@ -79,27 +85,27 @@ class Cons[+A](hd:A,tl: => MyStream[A]) extends MyStream[A]{
 
   override def filter(predicate: A => Boolean): MyStream[A] = {
 
-    if(predicate(head)) new Cons(head, tail.filter(predicate))
+    if (predicate(head)) new Cons(head, tail.filter(predicate))
     else tail.filter(predicate)
 
   }
 
   override def take(n: Int): MyStream[A] = {
-    if(n <= 0) EmptyStream
-    else if(n==1) new Cons(head, EmptyStream)
-    else new Cons(head, tail.take(n-1))
+    if (n <= 0) EmptyStream
+    else if (n == 1) new Cons(head, EmptyStream)
+    else new Cons(head, tail.take(n - 1))
   }
 
 }
 
 object MyStream {
-  def from[A](start:A)(generator:A => A): MyStream[A] =
+  def from[A](start: A)(generator: A => A): MyStream[A] =
     new Cons(start, MyStream.from(generator(start))(generator))
 }
 
 object TestStream extends App {
 
-  val naturals = MyStream.from(1)(_ +1)
+  val naturals = MyStream.from(1)(_ + 1)
   println(naturals.head)
   println(naturals.tail.head)
   println(naturals.tail.tail.head)
@@ -109,8 +115,25 @@ object TestStream extends App {
   startFrom0.take(10000).foreach(println)
 
   //map flatmap
-  println(startFrom0.map( _ * 2).take(100).toList())
-  println(startFrom0.flatMap(x => new Cons(x, new Cons(x+1,EmptyStream))).take(100).toList())
+  println(startFrom0.map(_ * 2).take(100).toList())
+  println(startFrom0.flatMap(x => new Cons(x, new Cons(x + 1, EmptyStream))).take(10).toList())
+  //if we don't take ten we get a stack overflow bcs the compiler tries to find numbers less than 10 forever
+  println(startFrom0.filter(_ < 10).take(10).toList())
+
+  // Excercise on stream
+  // 1 - stream of fibonacci numbers
+  // 2 - stream of prime numbers with Eratosthens' sieve
+
+  def fibo(first: Int, second: Int): MyStream[BigInt] =
+    new Cons(first, fibo(second, first + second))
+
+  println(fibo(1, 1).take(100).toList())
+
+  def erath(numbers: MyStream[Int]):MyStream[Int] =
+    if(numbers.isEmpty) numbers
+    else new Cons(numbers.head,erath(numbers.filter(e => e%numbers.head!=0)))
+
+  println(erath(MyStream.from(2)(_ + 1)).take(100).toList())
 
 }
 
